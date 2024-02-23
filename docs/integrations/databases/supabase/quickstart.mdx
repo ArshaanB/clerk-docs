@@ -19,32 +19,34 @@ description: Learn how to integrate Clerk into your Supabase application.
 
 </TutorialHero>
 
-## Quickstart
-
 You can use Clerk's [JWT templates](/docs/backend-requests/making/jwt-templates#jwt-templates) to authenticate users before giving them access to your Supabase data. Doing so enables you to protect your data from unexpected changes with Supabase's [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security) while leveraging Clerk's webhooks, prebuilt components, and out-of-the-box security features like bot detection.
 
 <Steps>
  
 ### Configure your Supabase project's RLS policies
 
-It is recommended that you enable Supabase's Row Level Security (RLS) for your databases. To access the contents of a database from within your app, you must add an RLS policy to allow your database to be read.
-
-To do so:
+It is recommended that you enable Supabase's Row Level Security [(RLS)](https://supabase.com/docs/guides/auth/row-level-security) for your database tables. To access the contents of a database table from within your app, you must add an RLS policy to allow your database to be read:
 
 1. [Visit the Supabase dashboard](https://supabase.com/dashboard/projects) and select your project.
-1. In the sidebar, select **Authentication** → **Policies**. Select the **New Policy** button.
+1. In the sidebar, select **Authentication** > **Policies**. Select the **New Policy** button.
 1. Select **For full customization** to create your own policy.
     - Set the policy name to "Enable read for authenticated visitors".
     - Choose **SELECT** for the **Allowed operation**.
     - In the **Targeted roles** dropdown, select `authenticated`.
     - In **USING expression**, enter `true`.
     - Finally, select **Review**. Then, select **Save policy**.
+    - If you're using the policy editor, paste the following snippet:
+    ```sql filename="Supabase policy editor"
+    CREATE POLICY "Enable read for authenticated visitors" ON "public"."your_table"
+    AS PERMISSIVE FOR SELECT
+    TO authenticated
+    USING (true)
+    ```
+    <Callout type="info">
 
-<Callout type="info">
+      This policy gives full read access on your table to _any_ visitor to your app who authenticates through Clerk. To limit each user's access to only their data, see [the docs on accessing user IDs in RLS policies](/docs/integrations/databases/supabase/rls-policies).
 
-  This policy gives full database read access to _any_ visitor to your app who authenticates through Clerk. To limit each user's access to only their data, see the section below on accessing user IDs in RLS policies.
-
-</Callout>
+    </Callout>
 
 ### Get your Supabase JWT secret key
 
@@ -53,7 +55,7 @@ To give users access to your data, Supabase's API requires an access token to au
 To find it:
 
 1. Select your project from your Supabase dashboard.
-1. In the sidebar, select **Settings** → **API**. Copy the value in the **JWT Secret** field.
+1. In the sidebar, select **Settings** > **API**. Copy the value in the **JWT Secret** field.
 1. Open [the Clerk dashboard](https://dashboard.clerk.com/) in a new tab.
 
 ### Create a Supabase JWT template
@@ -67,7 +69,7 @@ To create a JWT template for Supabase:
 3. Configure your template:
     - The value of the **Name** field will be required when using the template in your code. For this quickstart, name it `supabase`. 
     - **Signing algorithm** will be `HS256` by default. This algorithm is required to use JWTs with Supabase. [Learn more in their docs](https://supabase.com/docs/guides/resources/glossary#jwt-signing-secret).
-    - Under **Signing key**, add the value of your Supabase **JWT secret key** from the previous step. 
+    - Under **Signing key**, add the value of your Supabase **JWT secret key** from [the previous step](#get-your-supabase-jwt-secret-key). 
     - Leave all other fields at their default settings unless you want to customize them. See [Clerk's JWT template docs](/docs/backend-requests/making/jwt-templates#creating-a-template) to learn what each of them do.
     - Select **Apply changes** to complete setup.
 
@@ -113,11 +115,11 @@ Then, set up your environment variables:
 1. If you don't have a `.env.local` file in the root directory of your Next.js project, create one now.
 1. Find your Clerk publishable key and secret key. If you're signed into Clerk, the `.env.local` snippet below will contain your keys. Otherwise:
     - Navigate to your Clerk Dashboard.
-    - Select your application, then select 🔑 API Keys in the sidebar menu.
+    - Select your application, then select **API Keys** in the sidebar menu.
     - You can copy your keys from the Quick Copy section.
 1. Add your keys to your `.env.local` file.
-1. Find your Supabase credentials.:
-    - Go to your Supabase dashboard. In the sidebar, select **Settings** → **API**.
+1. Find your Supabase credentials:
+    - Go to your Supabase dashboard. In the sidebar, select **Settings** > **API**.
     - Copy the **Project URL**.
     - Copy the value beside `anon` `public` in the **Project API Keys** section.
 1. Add your Supabase credentials to your `.env.local` file.
@@ -540,272 +542,6 @@ The final result should be similar to this:
 To learn how to show users only data associated with their user ID, see the section on RLS policies below.
 </Steps>
 
-## Access user IDs in RLS policies
-
-To add user-specific features to your app, such as a profile page, you need RLS policies that allow users to access only the content associated with their accounts.
-
-Supabase's `auth.uid()` enables you to do this, but is not compatible with Clerk user accounts. This section will teach you how to  associate Clerk user IDs with content in your Supabase database.
-
-<Steps>
-
-### Modify your tables
-
-First, you must add a column for user IDs to the relevant tables in your database. To do so:
-- In your Supabase dashboard, in the sidebar, navigate to **Database** > **Tables**. From here, you can choose which table you want to edit, and add new rows.
-    - For this example, you can call the row `user_id`.
-    - **This column's data type must be `text`***.
-
-### Add a SQL query
-
-Next, you must create a `requesting_user_id()` function so you can access the user ID in your RLS policies. To do so:
-    1. In your Supabase dashboard, in the sidebar, navigate to **SQL Editor**, then select **New query**. Paste the following into the editor:
-        ```sql
-        create or replace function requesting_user_id() returns text as $$ select nullif(current_setting('request.jwt.claims', true)::json->>'sub', '')::text; $$ language sql stable;
-        ```
-    1. Select **Run** to execute the query and create the function.
-
-### Create your RLS policies
-
-Now you must create an RLS policies to allow users to modify and read content from one of your tables.
-
-To do so:
-1. Create an RLS policy for inserting content:
-    - In your Supabase dashboard, in the sidebar, navigate to **Authentication** > **Policies**. Under the name of the table you want users to have access to, select **New Policy**.
-    - If you're using the policy editor, paste the following snippet:
-        ```sql
-        CREATE POLICY "create user post" ON "public"."Posts"
-        AS PERMISSIVE FOR INSERT
-        TO authenticated
-
-        WITH CHECK (requesting_user_id() = user_id)
-        ```
-        Replace `user_id` with whatever you named the column you'll be storing user IDs in. Replace "Posts" with whatever the name of your table is.         
-    - If you're using the GUI to create a policy, select **For full customization**.
-        - Name the policy whatever you want.
-        - For **Allowed operation**, select **INSERT**.
-        - For *Target roles*, select **authenticated**.
-        - For the **USING** expression, paste the following:
-        ```sql
-        requesting_user_id() = user_id
-        ```
-        Replace `user_id` with whatever you named the column you'll be storing user IDs in.
-1. Create another RLS policy to allow users to read content from the same table they can modify. Follow the same instructions as the previous step, but for **Allowed operation**, select **SELECT** instead of **INSERT**.
-    - If you're using the editor, copy the same snippet from the previous step, replacing `FOR INSERT` with `FOR SELECT`.
-
-### Fetch and modify your content from code
-
-Now you can create and read content from your tables based on the user ID. The following example demonstrates a component that allows you to create and read posts from Supabase with authentication by Clerk:
-<CodeBlockTabs type="framework" options={["Next.js App Router", "Next.js Pages Router", "React"]}>
-```ts filename="app/supabase/page.tsx"
-"use client";
-import { useAuth } from "@clerk/clerk-react";
-import { createClient } from "@supabase/supabase-js";
-import { useRef, useState } from "react";
-
-const supabaseClient = async (supabaseAccessToken: string | null) => {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_KEY ?? "",
-    {
-      global: { headers: { Authorization: `Bearer ${supabaseAccessToken}` } },
-    }
-  );
-  // set Supabase JWT on the client object,
-  // so it is sent up with all Supabase requests
-  return supabase;
-};
-
-export default function Home() {
-  const { getToken, userId } = useAuth();
-
-  const getSupabaseClient = async () => {
-    // Replace with your JWT template name
-    const supabaseAccessToken = await getToken({ template: "supabase" });
-    return await supabaseClient(supabaseAccessToken);
-  };
-
-  const [posts, setPosts] = useState<any>(null);
-  const getPosts = async () => {
-    const client = await getSupabaseClient();
-    // Fetches all posts scoped to the user
-    // Replace "Posts" with your table name
-    const { data, error } = await client.from("Posts").select();
-    setPosts(error || data);
-  };
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const sendPost = async () => {
-    if (!inputRef.current?.value) return;
-    const client = await getSupabaseClient();
-    const { data, error } = await client.from("Posts").insert({
-      user_id: userId,
-      content: inputRef.current?.value,
-    });
-  };
-
-  return (
-    <>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <input style={{ color: "black" }} type="text" ref={inputRef} />
-        <button onClick={sendPost}>Send Post</button>
-        <button onClick={getPosts}>Fetch Posts</button>
-      </div>
-      <h2>Posts</h2>
-      <p>
-        {!posts ? (
-          <strong>No posts</strong>
-        ) : (
-          <ul>
-            {posts.map((post: any) => (
-              <li key={post.id}>{post.content}</li>
-            ))}
-          </ul>
-        )}
-      </p>
-    </>
-  );
-}
-```
-```ts filename="pages/supabase/index.tsx"
-import { useAuth } from "@clerk/clerk-react";
-import { createClient } from "@supabase/supabase-js";
-import { useRef, useState } from "react";
-
-const supabaseClient = async (supabaseAccessToken: string | null) => {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_KEY ?? "",
-    {
-      global: { headers: { Authorization: `Bearer ${supabaseAccessToken}` } },
-    }
-  );
-  // set Supabase JWT on the client object,
-  // so it is sent up with all Supabase requests
-  return supabase;
-};
-
-export default function Home() {
-  const { getToken, userId } = useAuth();
-
-  const getSupabaseClient = async () => {
-    // Replace with your JWT template name
-    const supabaseAccessToken = await getToken({ template: "supabase" });
-    return await supabaseClient(supabaseAccessToken);
-  };
-
-  const [posts, setPosts] = useState<any>(null);
-  const getPosts = async () => {
-    const client = await getSupabaseClient();
-    // Fetches all posts scoped to the user
-    // Replace "Posts" with your table name
-    const { data, error } = await client.from("Posts").select();
-    setPosts(error || data);
-  };
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const sendPost = async () => {
-    if (!inputRef.current?.value) return;
-    const client = await getSupabaseClient();
-    const { data, error } = await client.from("Posts").insert({
-      user_id: userId,
-      content: inputRef.current?.value,
-    });
-  };
-
-  return (
-    <>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <input style={{ color: "black" }} type="text" ref={inputRef} />
-        <button onClick={sendPost}>Send Post</button>
-        <button onClick={getPosts}>Fetch Posts</button>
-      </div>
-      <h2>Posts</h2>
-      <p>
-        {!posts ? (
-          <strong>No posts</strong>
-        ) : (
-          <ul>
-            {posts.map((post: any) => (
-              <li key={post.id}>{post.content}</li>
-            ))}
-          </ul>
-        )}
-      </p>
-    </>
-  );
-}
-```
-```ts filename="components/supabase.tsx"
-import { useAuth } from "@clerk/clerk-react";
-import { createClient } from "@supabase/supabase-js";
-import { useRef, useState } from "react";
-
-const supabaseClient = async (supabaseAccessToken: string | null) => {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-    process.env.NEXT_PUBLIC_SUPABASE_KEY ?? "",
-    {
-      global: { headers: { Authorization: `Bearer ${supabaseAccessToken}` } },
-    }
-  );
-  // set Supabase JWT on the client object,
-  // so it is sent up with all Supabase requests
-  return supabase;
-};
-
-export default function Home() {
-  const { getToken, userId } = useAuth();
-
-  const getSupabaseClient = async () => {
-    // Replace with your JWT template name
-    const supabaseAccessToken = await getToken({ template: "supabase" });
-    return await supabaseClient(supabaseAccessToken);
-  };
-
-  const [posts, setPosts] = useState<any>(null);
-  const getPosts = async () => {
-    const client = await getSupabaseClient();
-    // Fetches all posts scoped to the user
-    // Replace "Posts" with your table name
-    const { data, error } = await client.from("Posts").select();
-    setPosts(error || data);
-  };
-
-  const inputRef = useRef<HTMLInputElement>(null);
-  const sendPost = async () => {
-    if (!inputRef.current?.value) return;
-    const client = await getSupabaseClient();
-    const { data, error } = await client.from("Posts").insert({
-      user_id: userId,
-      content: inputRef.current?.value,
-    });
-  };
-
-  return (
-    <>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <input style={{ color: "black" }} type="text" ref={inputRef} />
-        <button onClick={sendPost}>Send Post</button>
-        <button onClick={getPosts}>Fetch Posts</button>
-      </div>
-      <h2>Posts</h2>
-      <p>
-        {!posts ? (
-          <strong>No posts</strong>
-        ) : (
-          <ul>
-            {posts.map((post: any) => (
-              <li key={post.id}>{post.content}</li>
-            ))}
-          </ul>
-        )}
-      </p>
-    </>
-  );
-}
-```
-</CodeBlockTabs>
-</Steps>
 
 ## Next steps
 
