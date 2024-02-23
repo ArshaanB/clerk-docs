@@ -308,13 +308,7 @@
       ["Grafbase", "/integrations/databases/grafbase"],
       ["Hasura", "/integrations/databases/hasura"],
       ["Nhost", "/integrations/databases/nhost"],
-      [
-        { "title": "Supabase" },
-        [
-          ["Quickstart", "/integrations/databases/supabase/quickstart"],
-          ["Access User IDs in RLS policies", "/integrations/databases/supabase/rls-policies"]
-        ]
-      ],
+      ["Supabase", "/integrations/databases/supabase"],
       "# Analytics",
       ["Google Analytics", "/integrations/analytics/google-analytics"],
       "# Webhooks",
