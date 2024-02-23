@@ -10,6 +10,10 @@ description: Learn how to integrate Clerk into your Supabase application.
       title: "Set up a Clerk application",
       link: "/docs/quickstarts/setup-clerk",
     },
+    {
+      title: "Set up a local project",
+      link: "/docs/quickstarts/overview",
+    },
   ]}
 >
 
@@ -19,9 +23,13 @@ description: Learn how to integrate Clerk into your Supabase application.
 
 </TutorialHero>
 
-Integrating Supabase with Clerk enables you to implement Supabase's robust storage options while leveraging Clerk's authentication, prebuilt components, and webhooks.
+Integrating Supabase with Clerk gives you the benefits of using a Supabase database while leveraging Clerk's authentication, prebuilt components, and webhooks.
 
-The following steps will teach you how to integrate Supabase with Clerk by creating [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security) (RLS) policies that show users content associated with their account.
+This tutorial will teach you how to integrate Supabase with Clerk by creating [Row Level Security](https://supabase.com/docs/guides/auth/row-level-security) (RLS) policies that show users content associated with their account.
+
+<Callout type="info">
+  You must have a local project with Clerk set up already to follow this tutorial. See [the quickstart docs](/docs/quickstarts/overview) to get started.
+</Callout>
 
 <Steps>
  
@@ -30,7 +38,7 @@ The following steps will teach you how to integrate Supabase with Clerk by creat
 To show users content scoped to their account, you must create RLS policies that check the user's ID. To access user IDs in your RLS policies, you must add a `user_id` column to the relevant tables:
 
 - In your Supabase dashboard, in the sidebar, navigate to **Database** > **Tables**. From here, you can choose which table you want to edit, and add the new column.
-    - For this example, you can call the column `user_id`.
+    - You can name the column anything, but for this example, name it `user_id`.
     - **This column's data type must be `text`**.
 
 <Callout type="info">
@@ -663,6 +671,4 @@ The following steps will show you how to fetch and send content to your Supabase
 
 ## Next steps
 
-- Get started with Clerk's official [clerk-supabase-starter](https://github.com/clerk/clerk-supabase-starter) repo
-- Check out Clerk's [Next.js + Supabase + Clerk tutorial](https://clerk.com/blog/nextjs-supabase-todos-with-multifactor-authentication)
 - Try adding some [custom claims](/docs/backend-requests/making/jwt-templates) to the JWT template in `app_metadata` or `user_metadata`
